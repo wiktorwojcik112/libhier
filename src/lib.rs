@@ -13,6 +13,8 @@ mod token;
 mod location;
 mod expression;
 
+pub use crate::interpreter::warning;
+
 fn report(error: &str, location: Location) {
     eprintln!("! [{}:{}] in {}: {}", location.line_number, location.offset, location.module, error);
 }
