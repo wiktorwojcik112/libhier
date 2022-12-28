@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 use std::{fs, io};
 use std::io::Write;
-use std::process::exit;
 use crate::interpreter::warning;
-use std::time::{SystemTime, UNIX_EPOCH};
-use rand::Rng;
 use crate::environment::Environment;
 use crate::hier::Hier;
 use crate::value::Value;
@@ -472,25 +469,6 @@ impl Environment {
         Value::LIST(arguments)
     }
 
-    pub fn call_write(&mut self, arguments: Vec<Value>) -> Value {
-        if arguments.len() == 2{
-            if let Value::STRING(path) = arguments[0].clone() {
-                if let Value::STRING(contents) = arguments[1].clone() {
-                    match std::fs::write(path, contents.as_bytes()) {
-                        Ok(_bytes) => Value::STRING(contents),
-                        Err(error) => { warning(&format!("Failed to write to file: {}", error)); Value::NULL }
-                    }
-                } else {
-                    self.error("Write operation requires second argument to be a string to write.");
-                }
-            } else {
-                self.error("Write operation requires first argument to be a string path to file.");
-            }
-        } else {
-            self.error("Write operation requires 2 arguments: path string and contents string.");
-        }
-    }
-
     pub fn call_read(&mut self, arguments: Vec<Value>) -> Value {
         if arguments.len() == 0 {
             let mut line = String::new();
@@ -504,17 +482,8 @@ impl Environment {
             }
 
             Value::STRING(line)
-        } else if arguments.len() == 1 {
-            if let Value::STRING(path) = arguments[0].clone() {
-                match fs::read_to_string(path) {
-                    Ok(contents) => Value::STRING(contents),
-                    Err(error) => Value::ERROR(error.to_string())
-                }
-            } else {
-                self.error("Read operation requires first argument to be a string path to file.");
-            }
         } else {
-            self.error("Read operation requires 0 or 1 arguments (a path).");
+            self.error("Read operation requires 0 arguments.");
         }
     }
 
@@ -700,17 +669,6 @@ impl Environment {
         }
     }
 
-    pub fn call_time(&mut self, arguments: Vec<Value>) -> Value {
-        if arguments.len() != 0 {
-            self.error("Time operation requires 0 arguments.");
-        }
-
-        match SystemTime::now().duration_since(UNIX_EPOCH) {
-            Ok(n) => Value::NUMBER(n.as_secs() as f64),
-            Err(_) => self.error("System time is before Unix epoch."),
-        }
-    }
-
     pub fn call_break(&mut self, arguments: Vec<Value>) -> Value {
         if arguments.len() != 0 {
             self.error("Break operation requires 0 arguments.");
@@ -745,7 +703,7 @@ impl Environment {
         }
 
         eprintln!("! Panic: {}", arguments[0].clone().text_representation());
-        exit(1);
+        (self.exit_handler)();
     }
 
     pub fn call_eval(&mut self, arguments: Vec<Value>) -> Value {
@@ -758,60 +716,6 @@ impl Environment {
             hier.run(code)
         } else {
             self.error("Evaluate operation requires a string argument.");
-        }
-    }
-
-    pub fn call_cmd(&mut self, arguments: Vec<Value>) -> Value {
-        if arguments.len() != 1 {
-            self.error("Cmd operation requires at least 1 string argument.");
-        }
-
-        let mut args: Vec<String> = arguments.iter().map(|value| value.clone().text_representation()).collect();
-        args.remove(0);
-
-        if let Value::STRING(command) = arguments[0].clone() {
-            let process = match std::process::Command::new(command)
-                .args(args)
-                .spawn() {
-                Ok(process) => process,
-                Err(error) => return Value::ERROR(error.to_string()),
-            };
-
-            let output = match process.wait_with_output() {
-                Ok(output)  => output,
-                Err(error) => return Value::ERROR(error.to_string()),
-            };
-
-            let string_output = match std::string::String::from_utf8(output.stdout) {
-                Ok(string_output)  => string_output,
-                Err(error) => return Value::ERROR(error.to_string()),
-            };
-
-            Value::STRING(string_output)
-        } else {
-            self.error("Cmd operation requires a string argument.");
-        }
-    }
-
-    pub fn call_random(&mut self, arguments: Vec<Value>) -> Value {
-        if arguments.len() != 2 {
-            self.error("Random operation requires 2 number arguments. First smaller than second.");
-        }
-
-        if let Value::NUMBER(first) = arguments[0] {
-            if let Value::NUMBER(second) = arguments[1] {
-                if first >= second {
-                    self.error("Random operation's first argument must be smaller than second.");
-                }
-
-                let mut rng = rand::thread_rng();
-
-                Value::NUMBER(rng.gen_range(first, second) as f64)
-            } else {
-                self.error("Random operation's second argument must be a number.");
-            }
-        } else {
-            self.error("Random operation's first argument must be a number.");
         }
     }
 
