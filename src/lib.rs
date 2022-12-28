@@ -2,16 +2,15 @@ use crate::location::Location;
 
 pub mod hier;
 pub mod value;
-
-mod tokenizer;
-mod parser;
-mod interpreter;
-mod environment;
-mod native_functions;
-mod types;
-mod token;
-mod location;
-mod expression;
+pub mod types;
+pub mod environment;
+pub mod tokenizer;
+pub mod parser;
+pub mod interpreter;
+pub mod native_functions;
+pub mod token;
+pub mod location;
+pub mod expression;
 
 pub use crate::interpreter::warning;
 
