@@ -183,7 +183,6 @@ impl Environment {
             "panic" => self.call_panic(arguments),
             "read" => self.call_read(arguments),
             "insert" => self.call_insert(arguments),
-            "write" => self.call_write(arguments),
             "round" => self.call_round(arguments),
             "remove" => self.call_remove(arguments),
             "replace" => self.call_replace(arguments),
