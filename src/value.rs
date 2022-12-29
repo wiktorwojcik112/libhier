@@ -11,7 +11,7 @@ pub enum Value {
     STRING(String),
     NUMBER(f64),
     FUNCTION(Vec<String>, Box<Value>),
-    NATIVE_FUNCTION(fn(&mut Environment, Vec<Value>) -> Value, usize),
+    NATIVE_FUNCTION(fn(&mut Environment, Vec<Value>) -> Value, i64),
     BOOL(bool),
     NULL,
     BLOCK(Vec<Expression>),

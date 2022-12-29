@@ -38,7 +38,11 @@ impl Hier {
         self.environment.interpret()
     }
 
-    pub fn add_function(&mut self, name: String, arguments_count: usize, function: fn(&mut Environment, Vec<Value>) -> Value) {
+    pub fn add_function(&mut self, name: String, arguments_count: i64, function: fn(&mut Environment, Vec<Value>) -> Value) {
+        if arguments < -1 {
+            panic!("Invalid argument count for function {}. Must be either -1 (infinite) or 0 and higher.", name);
+        }
+
         self.environment.values.insert(VariableId(0, name), Value::NATIVE_FUNCTION(function, arguments_count));
     }
 

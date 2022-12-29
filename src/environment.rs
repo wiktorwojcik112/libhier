@@ -153,7 +153,7 @@ impl Environment {
                 }
             }
         }else if let Value::NATIVE_FUNCTION(function, arity) = self.get(name.clone().to_string()) {
-            if arguments.len() != arity {
+            if arity != -1 && arguments.len() != arity as usize {
                 self.error(&format!("Function {} expects {} arguments, but {} were provided.", name, arity, arguments.len()));
             }
 
