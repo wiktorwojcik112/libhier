@@ -1,5 +1,4 @@
 use crate::environment::{Environment, VariableId};
-use crate::expression::Expression;
 use crate::parser::Parser;
 use crate::tokenizer::Tokenizer;
 use crate::value::Value;
@@ -22,12 +21,12 @@ impl Hier {
     pub fn run(&mut self, code: String) -> Value {
         let mut tokenizer = Tokenizer::new(code, self.module_reader, self.exit_handler);
 
-        if tokenizer.tokenize() {
+        if tokenizer.tokenize_module() {
             println!("Failed.");
             (self.exit_handler)();
         }
 
-        let mut parser = Parser::new(tokenizer.tokens);
+        let mut parser = Parser::new(tokenizer.tokens, self.module_reader, self.exit_handler);
 
         if parser.parse() {
             println!("Failed.");
@@ -39,7 +38,7 @@ impl Hier {
     }
 
     pub fn add_function(&mut self, name: String, arguments_count: i64, function: fn(&mut Environment, Vec<Value>) -> Value) {
-        if arguments < -1 {
+        if arguments_count < -1 {
             panic!("Invalid argument count for function {}. Must be either -1 (infinite) or 0 and higher.", name);
         }
 

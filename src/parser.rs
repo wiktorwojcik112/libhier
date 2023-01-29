@@ -1,6 +1,7 @@
 use crate::report;
 
 use crate::expression::Expression;
+use crate::interpolated_string::InterpolatedString;
 use crate::location::Location;
 use crate::token::Token;
 use crate::value::Value;
@@ -9,16 +10,20 @@ pub struct Parser {
     pub code: Expression,
     current_index: usize,
     tokens: Vec<Token>,
-    had_error: bool
+    had_error: bool,
+    pub module_reader: fn(String) -> String,
+    pub exit_handler: fn() -> !
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
         Self {
             code: Expression::NUMBER(0.0),
             current_index: 0,
             tokens,
-            had_error: false
+            had_error: false,
+            module_reader,
+            exit_handler
         }
     }
 
@@ -40,7 +45,7 @@ impl Parser {
                 Token::RIGHT_BRACKET(_) => return current_list,
                 Token::LEFT_CURLY(_) => current_list.push(Expression::BLOCK(self.parse_block())),
                 Token::RIGHT_CURLY(_) => report("Unexpected }.", (*current_token.get_location()).clone()),
-                Token::STRING(string, _) => current_list.push(Expression::STRING(string.clone())),
+                Token::STRING(string, _) => current_list.push(Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler))),
                 Token::NUMBER(number, _) => current_list.push(Expression::NUMBER(number.clone())),
                 Token::IDENTIFIER(identifier, _) => current_list.push(if let Token::COLON(_) = self.peek().clone() {
                         self.consume();
@@ -71,7 +76,7 @@ impl Parser {
                         } else if let Token::LEFT_BRACKET(_) = current_token {
                             key_expression = Expression::LIST(self.parse_list());
                         } else if let Token::STRING(string, _) = current_token {
-                            key_expression = Expression::STRING(string.clone());
+                            key_expression = Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler));
                         } else if let Token::NUMBER(number, _) = current_token {
                             key_expression = Expression::NUMBER(number.clone());
                         } else if let Token::IDENTIFIER(identifier, _) = current_token {
@@ -109,7 +114,7 @@ impl Parser {
                 Token::RIGHT_BRACKET(_) => report("Unexpected ).", (*current_token.get_location()).clone()),
                 Token::LEFT_CURLY(_) => current_list.push(Expression::BLOCK(self.parse_block())),
                 Token::RIGHT_CURLY(_) => return current_list,
-                Token::STRING(string, _) => current_list.push(Expression::STRING(string.clone())),
+                Token::STRING(string, _) => current_list.push(Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler))),
                 Token::NUMBER(number, _) => current_list.push(Expression::NUMBER(number.clone())),
                 Token::IDENTIFIER(identifier, _) => current_list.push(if let Token::COLON(_) = self.peek().clone() {
                         self.consume();
@@ -143,7 +148,7 @@ impl Parser {
                         } else if let Token::LEFT_BRACKET(_) = current_token {
                             key_expression = Expression::LIST(self.parse_list());
                         } else if let Token::STRING(string, _) = current_token {
-                            key_expression = Expression::STRING(string.clone());
+                            key_expression = Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler));
                         } else if let Token::NUMBER(number, _) = current_token {
                             key_expression = Expression::NUMBER(number.clone());
                         } else if let Token::IDENTIFIER(identifier, _) = current_token {
@@ -178,7 +183,7 @@ impl Parser {
             Token::RIGHT_BRACKET(_) => { report("Unexpected ).", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
             Token::LEFT_CURLY(_) => Expression::BLOCK(self.parse_block()),
             Token::RIGHT_CURLY(_) => { report("Unexpected }.", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
-            Token::STRING(string, _) => Expression::STRING(string.clone()),
+            Token::STRING(string, _) => Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler)),
             Token::NUMBER(number, _) => Expression::NUMBER(number.clone()),
             Token::IDENTIFIER(identifier, _) => if let Token::COLON(_) = self.peek() {
                 self.consume();

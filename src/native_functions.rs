@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::{fs, io};
+use std::io;
 use std::io::Write;
-use crate::interpreter::warning;
 use crate::environment::Environment;
 use crate::hier::Hier;
 use crate::value::Value;

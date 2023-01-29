@@ -13,4 +13,12 @@ impl Location {
             offset
         }
     }
+
+    pub fn empty() -> Self {
+        Self {
+            module: String::new(),
+            line_number: 0,
+            offset: 0
+        }
+    }
 }

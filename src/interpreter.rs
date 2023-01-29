@@ -164,7 +164,7 @@ impl Environment {
 
     pub fn visit_string(&mut self, value: Expression) -> Value {
         if let Expression::STRING(value) = value {
-            Value::STRING(value)
+            Value::STRING(value.resolve(self))
         } else {
             Value::NULL
         }

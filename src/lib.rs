@@ -11,6 +11,7 @@ pub mod native_functions;
 pub mod token;
 pub mod location;
 pub mod expression;
+mod interpolated_string;
 
 pub use crate::interpreter::warning;
 

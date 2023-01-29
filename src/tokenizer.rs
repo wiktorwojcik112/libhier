@@ -32,17 +32,21 @@ impl Tokenizer {
     }
 
     /// Returns bool if there was a error.
-    pub fn tokenize(&mut self) -> bool {
+    pub fn tokenize_module(&mut self) -> bool {
         self.tokens.push(Token::LEFT_CURLY(self.make_location()));
 
-        self.tokenize_module();
+        self.tokenize_code();
 
         self.tokens.push(Token::RIGHT_CURLY(self.make_location()));
 
         self.had_error
     }
 
-    pub fn tokenize_module(&mut self) -> bool {
+    pub fn tokenize_code(&mut self) -> bool {
+        let mut count_of_brackets = 0;
+        let mut count_of_squares = 0;
+        let mut count_of_curlys = 0;
+
         while self.current_index < self.code.len() {
             let current_char = self.peek();
 
@@ -72,21 +76,44 @@ impl Tokenizer {
                 self.consume();
             } else if current_char == '(' {
                 self.tokens.push(Token::LEFT_BRACKET(self.make_location()));
+                count_of_brackets += 1;
                 self.consume();
             } else if current_char == ')' {
                 self.tokens.push(Token::RIGHT_BRACKET(self.make_location()));
+                count_of_brackets -= 1;
+
+                if count_of_brackets == -1 {
+                    report("Unexpected ).", self.make_location());
+                }
+
                 self.consume();
             } else if current_char == '[' {
+                count_of_squares += 1;
                 self.tokens.push(Token::LEFT_SQUARE(self.make_location()));
                 self.consume();
             } else if current_char == ']' {
                 self.tokens.push(Token::RIGHT_SQUARE(self.make_location()));
+
+                count_of_squares -= 1;
+
+                if count_of_squares == -1 {
+                    report("Unexpected ].", self.make_location());
+                }
+
                 self.consume();
             } else if current_char == '{' {
                 self.tokens.push(Token::LEFT_CURLY(self.make_location()));
+                count_of_curlys += 1;
                 self.consume();
             } else if current_char == '}' {
                 self.tokens.push(Token::RIGHT_CURLY(self.make_location()));
+
+                count_of_curlys -= 1;
+
+                if count_of_curlys == -1 {
+                    report("Unexpected }.", self.make_location());
+                }
+
                 self.consume();
             } else if current_char == '"' {
                 self.string();
@@ -99,7 +126,106 @@ impl Tokenizer {
             }
         }
 
+        if count_of_curlys != 0 {
+            report("Missing }", self.make_location());
+        } else if count_of_brackets != 0 {
+            report("Missing )", self.make_location());
+        } else if count_of_squares != 0 {
+            report("Missing ]", self.make_location());
+        }
+
         self.had_error
+    }
+
+    pub fn tokenize_interpolation(&mut self) -> usize {
+        let mut count_of_brackets = 0;
+        let mut count_of_squares = 0;
+        let mut count_of_curlys = 0;
+
+        while self.current_index < self.code.len() {
+            if count_of_brackets == 0 {
+                return self.current_index;
+            }
+
+            let current_char = self.peek();
+
+            if self.peek() == '#' && self.peek_next() != ' ' {
+                self.process();
+            } else if current_char == '\\' && self.peek_next() == '*' {
+                self.consume();
+                self.consume();
+                self.comment();
+            } else if current_char == '\n' {
+                self.consume();
+
+                if self.peek() == '#' && self.peek_next() != ' ' {
+                    self.process();
+                }
+
+                self.current_line += 1;
+                self.current_offset = 0;
+                continue;
+            } else if current_char == ' ' || current_char == '\t' {
+                self.consume();
+            } else if current_char == '.' {
+                self.tokens.push(Token::DOT(self.make_location()));
+                self.consume();
+            } else if current_char == ':' {
+                self.tokens.push(Token::COLON(self.make_location()));
+                self.consume();
+            } else if current_char == '(' {
+                self.tokens.push(Token::LEFT_BRACKET(self.make_location()));
+                count_of_brackets += 1;
+                self.consume();
+            } else if current_char == ')' {
+                self.tokens.push(Token::RIGHT_BRACKET(self.make_location()));
+                count_of_brackets -= 1;
+
+                if count_of_brackets == -1 {
+                    return self.current_index;
+                }
+
+                self.consume();
+            } else if current_char == '[' {
+                count_of_squares += 1;
+                self.tokens.push(Token::LEFT_SQUARE(self.make_location()));
+                self.consume();
+            } else if current_char == ']' {
+                self.tokens.push(Token::RIGHT_SQUARE(self.make_location()));
+
+                count_of_squares -= 1;
+
+                if count_of_squares == -1 {
+                    return self.current_index;
+                }
+
+                self.consume();
+            } else if current_char == '{' {
+                self.tokens.push(Token::LEFT_CURLY(self.make_location()));
+                count_of_curlys += 1;
+                self.consume();
+            } else if current_char == '}' {
+                self.tokens.push(Token::RIGHT_CURLY(self.make_location()));
+
+                count_of_curlys -= 1;
+
+                if count_of_curlys == -1 {
+                    return self.current_index;
+                }
+
+                self.consume();
+            } else if current_char == '"' {
+                self.string();
+            } else {
+                if Tokenizer::is_a_digit(current_char) {
+                    self.number();
+                } else {
+                    self.identifier();
+                }
+            }
+        }
+
+        self.current_index
     }
 
     fn process(&mut self) {
@@ -125,7 +251,7 @@ impl Tokenizer {
 
             tokenizer.module_name = path.clone();
 
-            if tokenizer.tokenize_module() {
+            if tokenizer.tokenize_code() {
                 eprintln!("Failed to include file {}.", path);
                 self.had_error = true;
                 (self.exit_handler)()
