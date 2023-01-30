@@ -143,10 +143,6 @@ impl Tokenizer {
         let mut count_of_curlys = 0;
 
         while self.current_index < self.code.len() {
-            if count_of_brackets == 0 {
-                return self.current_index;
-            }
-
             let current_char = self.peek();
 
             if self.peek() == '#' && self.peek_next() != ' ' {
@@ -222,6 +218,10 @@ impl Tokenizer {
                 } else {
                     self.identifier();
                 }
+            }
+
+            if count_of_brackets == 0 {
+                return self.current_index;
             }
         }
 
