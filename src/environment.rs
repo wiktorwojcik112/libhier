@@ -184,6 +184,7 @@ impl Environment {
             "read" => self.call_read(arguments),
             "insert" => self.call_insert(arguments),
             "round" => self.call_round(arguments),
+            "map" => self.call_map(arguments),
             "remove" => self.call_remove(arguments),
             "replace" => self.call_replace(arguments),
             "length" => self.call_length(arguments),

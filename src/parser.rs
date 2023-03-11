@@ -47,13 +47,10 @@ impl Parser {
                 Token::RIGHT_CURLY(_) => report("Unexpected }.", (*current_token.get_location()).clone()),
                 Token::STRING(string, _) => current_list.push(Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler))),
                 Token::NUMBER(number, _) => current_list.push(Expression::NUMBER(number.clone())),
-                Token::IDENTIFIER(identifier, _) => current_list.push(if let Token::COLON(_) = self.peek().clone() {
-                        self.consume();
-                        let value = self.parse_expression();
-                        Expression::KEY_VALUE(identifier.to_string().clone(), Box::new(value))
-                    } else {
-                        Expression::IDENTIFIER(identifier.clone().to_string())
-                    }),
+                Token::IDENTIFIER(identifier, _) => {
+                    let result = self.parse_identifier(identifier, &mut current_list, true);
+                    current_list.push(result);
+                },
                 Token::DOT(_) => {
                     if let Some(last_expression) = current_list.pop() {
                         let current_token = self.consume();
@@ -116,13 +113,10 @@ impl Parser {
                 Token::RIGHT_CURLY(_) => return current_list,
                 Token::STRING(string, _) => current_list.push(Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler))),
                 Token::NUMBER(number, _) => current_list.push(Expression::NUMBER(number.clone())),
-                Token::IDENTIFIER(identifier, _) => current_list.push(if let Token::COLON(_) = self.peek().clone() {
-                        self.consume();
-                        let value = self.parse_expression();
-                        Expression::KEY_VALUE(identifier.to_string().clone(), Box::new(value))
-                    } else {
-                        Expression::IDENTIFIER(identifier.to_string().clone())
-                    }),
+                Token::IDENTIFIER(identifier, _) => {
+                    let result = self.parse_identifier(identifier, &mut current_list, false);
+                    current_list.push(result);
+                },
                 Token::DOT(_) => {
                     if let Some(last_expression) = current_list.pop() {
                         self.consume();
@@ -185,13 +179,7 @@ impl Parser {
             Token::RIGHT_CURLY(_) => { report("Unexpected }.", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
             Token::STRING(string, _) => Expression::STRING(InterpolatedString::construct(string.clone(), Location::empty(), self.module_reader, self.exit_handler)),
             Token::NUMBER(number, _) => Expression::NUMBER(number.clone()),
-            Token::IDENTIFIER(identifier, _) => if let Token::COLON(_) = self.peek() {
-                self.consume();
-                let value = self.parse_expression();
-                Expression::KEY_VALUE(identifier.to_string().clone(), Box::new(value))
-            } else {
-                Expression::IDENTIFIER(identifier.to_string().clone())
-            },
+            Token::IDENTIFIER(identifier, _) => self.parse_identifier(identifier, &mut vec![], false),
             Token::DOT(_) => { report("Unexpected ..", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
             Token::LEFT_SQUARE(_) => { report("Unexpected [.", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
             Token::RIGHT_SQUARE(_) => { report("Unexpected ].", (*current_token.get_location()).clone()); Expression::VALUE(Value::NULL) },
@@ -199,6 +187,51 @@ impl Parser {
         };
 
         expression
+    }
+
+    fn parse_identifier(&mut self, identifier: String, current_list: &mut Vec<Expression>, is_list: bool) -> Expression {
+        if identifier == ">" {
+            /*
+            Parse piping. Pipe is represented using > symbol. When pipe is used, previous list is placed inside next list as first argument.
+            This allows for more readable chaining of long commands. For example, instead of
+            (print (map (1 2 3) { (+ element 1 }))
+            you can write
+            (1 2 3) > (map { (+ element 1) }) > (print)
+            The piping syntax is converted into the first example so it has the same effect.
+            */
+
+            if current_list.len() == 0 && is_list {
+                // Current list is empty when the identifier is the first element of the list, which means that it should be a name for function > (more than).
+                return Expression::IDENTIFIER(identifier.clone().to_string());
+            } else if current_list.len() == 0 && !is_list {
+                report("Unexpected pipe operator (>). It should be placed after a list.", Location::empty());
+                return Expression::VALUE(Value::NULL);
+            }
+
+            let last_expression = current_list[current_list.len() - 1].clone();
+            current_list.remove(current_list.len() - 1);
+
+            let next_token = self.consume();
+
+            match next_token {
+                Token::LEFT_BRACKET(_) => { }
+                _ => report("There must be a list after the pipe operator (>).", next_token.get_location().clone())
+            }
+
+            let mut next_expression = self.parse_list();
+
+            next_expression.insert(1, last_expression);
+
+            Expression::LIST(next_expression)
+        } else {
+            if let Token::COLON(_) = self.peek().clone() {
+                self.consume();
+                let value = self.parse_expression();
+                Expression::KEY_VALUE(identifier.to_string().clone(), Box::new(value))
+            } else {
+                Expression::IDENTIFIER(identifier.clone().to_string())
+            }
+        }
     }
 
     fn consume(&mut self) -> &Token {

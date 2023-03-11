@@ -16,7 +16,6 @@ The language is functional (no classes) and everything in it (except directives)
 
 Almost all of Hier is value-based. That means that operation creates a copy of a value. For example, by using insert, remove or replace functions on an array, you don't change the original array, but create a new array with specified changes.
 
-
 # Directives
 Directives begin with #. There are 2 types of directives - module name and include. 
 - Module name is provided using #some_module_name syntax. Module name is the name of current file (by default, its filename). It is used to distinguish between modules in inclusion.
@@ -36,7 +35,7 @@ An example:
 # Table
 Tables are created using (# value1 value2) or (table value1 value2) function calls. Tables contain many key-values (all arguments to calls must be key-values (look: key-value section)). Fields of table can be accessed using property and specifying key of a key-value pair. Here is an example of the usage:
 ```
-(@some (# key("value")))
+(@some (# key:"value"))
 (print some.key)
 ```
 
@@ -64,6 +63,14 @@ Some identifiers get converted into values, like true, false and null. All other
 
 # Operators
 Operators are just functions called like other functions. There are operators for addition (+; also acts as a string concatenation operation), subtraction (-), multiplication (*), division (/), modulo (%; because all numbers are floats, it rounds all numbers down and then performs modulo), logical negation (!; the only operator that only accepts one argument) logical and (&&),logical or (||), null-coalescing (??; if left is null, returns right, and if left isn't null, return left), (non-)equality (!= and ==) and comparison (<, >, <= and >=). +, -, *, /, && and || accept many arguments. 
+
+# Piping
+Pipe is represented using > symbol. When pipe is used, the previous list is placed inside the next list as first argument.
+This allows for more readable chaining of long commands. For example, instead of
+(print (map (1 2 3) { (+ element 1 }))
+you can write
+(1 2 3) > (map { (+ element 1) }) > (print)
+The piping syntax is converted into the first example, so it has the same effect.
 
 # Functions
 Functions are declared using (@function_name (| first_argument second_argument) { (print first_argument) }) syntax. Function | returns function arguments - a special value that just contains identifiers that are passed as arguments. The block is the code that will get executed when function is called. You call such function using normal syntax: (function_name 1 2). Hier checks arity (number of arguments) of functions and errors when it doesn't match. 

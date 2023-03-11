@@ -444,6 +444,41 @@ impl Environment {
         last_result
     }
 
+    pub fn call_map(&mut self, arguments: Vec<Value>) -> Value {
+        if arguments.len() != 2 {
+            self.error("Map function requires 2 arguments: a object and a block.");
+        }
+
+        let object = &arguments[0];
+        let block = if let Value::BLOCK(block) = &arguments[1] {
+            block
+        } else {
+            self.error("Map functions 2nd argument must be a block.");
+        };
+
+        match object {
+            Value::LIST(list) => {
+                let mut new_list: Vec<Value> = Vec::new();
+
+                for element in list {
+                    self.begin_scope();
+                    self.declare("element".to_string(), element.clone());
+                    new_list.push(self.interpret_block(block.clone()));
+                    self.end_scope();
+                }
+
+                Value::LIST(new_list)
+            },
+            _ => {
+                self.begin_scope();
+                self.declare("element".to_string(), object.clone());
+                let result = self.interpret_block(block.clone());
+                self.end_scope();
+                result
+            }
+        }
+    }
+
     pub fn call_print(&mut self, arguments: Vec<Value>) -> Value {
         for argument in arguments {
             print!("{}", argument.text_representation());
