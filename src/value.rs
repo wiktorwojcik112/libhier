@@ -19,7 +19,8 @@ pub enum Value {
     FUNCTION_ARGUMENTS(Vec<String>),
     KEY_VALUE(String, Box<Value>),
     TABLE(HashMap<String, Value>),
-    ERROR(String)
+    ERROR(String),
+    ENVIRONMENT(Box<Environment>)
 }
 
 impl Debug for Value {
@@ -49,7 +50,8 @@ impl Debug for Value {
             Value::FUNCTION_ARGUMENTS(arguments) => write!(f, "Function arguments {{ arguments: {:?} }}", arguments),
             Value::KEY_VALUE(key, value) => write!(f, "Key value {{ key: {:?}, value: {:?} }}", key, value),
             Value::TABLE(table) => write!(f, "Table {{ table: {:?} }}", table),
-            Value::ERROR(error) => write!(f, "Error {{ error: {:?} }}", error)
+            Value::ERROR(error) => write!(f, "Error {{ error: {:?} }}", error),
+            Value::ENVIRONMENT(_) => write!(f, "Environment")
         }
     }
 }
@@ -80,6 +82,14 @@ impl PartialEq<Self> for Value {
             }
         }
 
+        if let Value::ENVIRONMENT(_) = self {
+            return false;
+        }
+
+        if let Value::ENVIRONMENT(_) = other {
+            return false;
+        }
+
         self.text_representation() == other.text_representation()
     }
 }
@@ -103,7 +113,8 @@ impl Value {
             Value::KEY_VALUE(_, _) => Type::KEY_VALUE,
             Value::TABLE(_) => Type::TABLE,
             Value::ERROR(_) => Type::ERROR,
-            Value::NATIVE_FUNCTION(_, _) => Type::FUNCTION
+            Value::NATIVE_FUNCTION(_, _) => Type::FUNCTION,
+            Value::ENVIRONMENT(_) => Type::ENVIRONMENT
         }
     }
 
@@ -121,7 +132,8 @@ impl Value {
             Value::KEY_VALUE(key, value) => format!("{}({})", key, value.text_representation()),
             Value::TABLE(_) => "<TABLE>".to_string(),
             Value::ERROR(error) => error.to_string(),
-            Value::NATIVE_FUNCTION(_, _) => "<FUNCTION>".to_string()
+            Value::NATIVE_FUNCTION(_, _) => "<FUNCTION>".to_string(),
+            Value::ENVIRONMENT(_) => "<ENVIRONMENT>".to_string()
         }
     }
 

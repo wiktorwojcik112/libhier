@@ -19,6 +19,13 @@ impl Hier {
     }
 
     pub fn run(&mut self, code: String) -> Value {
+        let mut code = code;
+
+        if !code.starts_with('(') {
+            code.insert(0, '(');
+            code.push(')');
+        }
+
         let mut tokenizer = Tokenizer::new(code, self.module_reader, self.exit_handler);
 
         if tokenizer.tokenize_module() {

@@ -16,10 +16,28 @@ The language is functional (no classes) and everything in it (except directives)
 
 Almost all of Hier is value-based. That means that operation creates a copy of a value. For example, by using insert, remove or replace functions on an array, you don't change the original array, but create a new array with specified changes.
 
-# Directives
-Directives begin with #. There are 2 types of directives - module name and include. 
-- Module name is provided using #some_module_name syntax. Module name is the name of current file (by default, its filename). It is used to distinguish between modules in inclusion.
-- Include is provided using #<some_path.hier> syntax. The path can be relative to current directory. When used, Hier will literally include tokens from the provided file in the current file at the tokenization stage. If file was already included, it is omitted. It is determined based on module name of the file. This is an initial way for Hier to support multiple files, which may change in the future.
+# Importing
+In Hier you can import files using import function which accepts a string with a path to a hier file (./ at the beginning is automatically prepended and .hier is added at the end). It returns a special object which you can assign to a variable and use it by prepending an identifier with this variables name and # (object#identifier). Here is an example showing how importing of an example library (library.hier) in the same directory as working directory of the interpreter and another one in a folder (./math/constants.hier).
+
+./library.hier
+```
+(@hello (| name) { (println "Hello, " name) })
+```
+
+./math/constants.hier
+```
+(@pi 3.14159265359)
+(@golden_ratio 1.61803398875)
+```
+
+./main.hier
+```
+(@mylibrary (import "library")
+(library#hello "World")
+(@constants (import "math/constants")
+(print "Pi is equal " constants#pi)
+(print "Golden ratio is equal " constants#golden_ratio)
+```
 
 # Lists
 Lists are fundamental element of Hier. They are made of expressions between ( and ). The list may be a function call depending on circumstances. If first expression is an identifier, it will work like a function call, for example (print 1 2 3). If first expression is a property it will work like a syntactic sugar for function call on object, for example, it will convert (array.insert 1) to (insert array 1), allowing clearer syntax. If first expression evaluates to function arguments (for example: (| a b c)), list will evaluate to an anonymous function. Otherwise, it will generate an array (in Hier, arrays are collective name for lists and arrays). Lists (arrays) can also be created using (& value1 value2) function call or (list value1 value2) function call.
@@ -108,6 +126,6 @@ Break creates a "LoopExit" error which exits currently running loop.
 For runs the block for every element of a array (must be a list or a string). In every iteration the current element is passed as a variable named "element".
 
 # Other functions
-Hier contains many functions like print (print all values), println (print all values and a new line at the end), cmd (run a shell command), eval (evaluate Hier code string), string and number conversion, operations on arrays (insert, remove, length and replace) and a few more. You can find all of them in native_functions.rs file (they will be split to seperate files in the future). All of the functions will soon be documented.
+Hier contains many functions like print (print all values), println (print all values and a new line at the end), cmd (run a shell command), eval (evaluate Hier code string), string and number conversion, operations on arrays (insert, remove, length and replace) and a few more. You can find all of them in native_functions.rs file (they will be split to separate files in the future). All the functions will soon be documented. Some of them are only accessible from a client (example: [hier](https://github.com/wiktorwojcik112/hier) - CLI client)
 
 

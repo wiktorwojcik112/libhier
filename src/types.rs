@@ -12,7 +12,8 @@ pub enum Type {
     FUNCTION_ARGUMENTS,
     KEY_VALUE,
     TABLE,
-    ERROR
+    ERROR,
+    ENVIRONMENT
 }
 
 impl Type {
@@ -29,7 +30,8 @@ impl Type {
             Type::FUNCTION_ARGUMENTS => "FunctionArgs".to_string(),
             Type::KEY_VALUE => "KeyValue".to_string(),
             Type::TABLE => "Table".to_string(),
-            Type::ERROR => "Error".to_string()
+            Type::ERROR => "Error".to_string(),
+            Type::ENVIRONMENT => "Environment".to_string()
         }
     }
 
@@ -47,6 +49,7 @@ impl Type {
             "KeyValue" => Some(Type::KEY_VALUE),
             "Table" => Some(Type::TABLE),
             "Error" => Some(Type::ERROR),
+            "Environment" => Some(Type::ENVIRONMENT),
             _ => None,
         }
     }

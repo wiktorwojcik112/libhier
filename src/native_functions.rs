@@ -3,7 +3,9 @@ use std::io;
 use std::io::Write;
 use crate::environment::Environment;
 use crate::hier::Hier;
+use crate::parser::Parser;
 use crate::value::Value;
+use crate::tokenizer::Tokenizer;
 
 impl Environment {
     pub fn call_addition(&mut self, arguments: Vec<Value>) -> Value {
@@ -530,6 +532,46 @@ impl Environment {
             Value::BOOL(!boolean)
         } else {
             self.error("Negation requires 1 boolean argument.");
+        }
+    }
+
+    pub fn call_import(&mut self, arguments: Vec<Value>) -> Value {
+        if arguments.len() != 1 {
+            self.error("Import requires 1 string argument.");
+        }
+
+        if let Value::STRING(path) = arguments[0].clone() {
+            let mut path = path;
+
+            path += ".hier";
+            path.insert_str(0, "./");
+
+            let contents = (self.module_reader)(path.clone());
+
+            let mut tokenizer = Tokenizer::new(contents, self.module_reader, self.exit_handler);
+
+            tokenizer.module_name = path.clone();
+
+            if tokenizer.tokenize_module() {
+                eprintln!("Failed to import file {}.", path);
+                (self.exit_handler)()
+            }
+
+            let mut parser = Parser::new(tokenizer.tokens, self.module_reader, self.exit_handler);
+
+            if parser.parse() {
+                println!("Failed.");
+                (self.exit_handler)();
+            }
+
+            let mut environment = Environment::new(false, self.module_reader, self.exit_handler);
+
+            environment.code = parser.code;
+            environment.interpret();
+
+            Value::ENVIRONMENT(Box::new(environment))
+        } else {
+            self.error("Import requires 1 string argument.");
         }
     }
 

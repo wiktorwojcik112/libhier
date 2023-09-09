@@ -231,46 +231,13 @@ impl Tokenizer {
     fn process(&mut self) {
         self.consume();
 
-        if self.peek() == '<' {
-            self.consume();
-            let mut path = String::new();
+        let mut module_name = String::new();
 
-            while self.current_index < self.code.len() && self.peek() != '>' {
-                path += &(self.consume().to_string());
-            }
-
-            self.consume();
-
-            if self.modules.contains(&path) {
-                return;
-            }
-
-            let contents = (self.module_reader)(path.clone());
-
-            let mut tokenizer = Tokenizer::new(contents, self.module_reader, self.exit_handler);
-
-            tokenizer.module_name = path.clone();
-
-            if tokenizer.tokenize_code() {
-                eprintln!("Failed to include file {}.", path);
-                self.had_error = true;
-                (self.exit_handler)()
-            }
-
-            for token in tokenizer.tokens.clone() {
-                self.tokens.push(token);
-            }
-
-            self.modules.push(tokenizer.module_name);
-        } else {
-            let mut module_name = String::new();
-
-            while self.current_index < self.code.len() && self.peek() != '\n' {
-                module_name += &(self.consume().to_string());
-            }
-
-            self.module_name = module_name;
+        while self.current_index < self.code.len() && self.peek() != '\n' {
+            module_name += &(self.consume().to_string());
         }
+
+        self.module_name = module_name;
     }
 
     fn comment(&mut self) {

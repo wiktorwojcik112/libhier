@@ -1,0 +1,2 @@
+(@pi 3.14159265359)
+(@hello (| value) { (+ "Hello, " value) })

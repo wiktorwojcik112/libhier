@@ -16,18 +16,18 @@ pub struct Environment {
     pub code: Expression,
     is_in_repl: bool,
     pub module_reader: fn(String) -> String,
-    pub exit_handler: fn() -> !
+    pub exit_handler: fn() -> !,
 }
 
 impl Environment {
     pub fn new(is_in_repl: bool, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
-         Self {
+        Self {
             scope: 0,
             values: HashMap::new(),
             code: Expression::LIST(vec![]),
             is_in_repl,
             module_reader,
-            exit_handler
+            exit_handler,
         }
     }
 
@@ -48,7 +48,7 @@ impl Environment {
             code,
             is_in_repl,
             module_reader,
-            exit_handler
+            exit_handler,
         }
     }
     pub fn begin_scope(&mut self) {
@@ -70,25 +70,61 @@ impl Environment {
     }
 
     pub fn get(&self, key: String) -> Value {
-        if let Some(value) = self.values.get(&VariableId(self.scope, key.clone())) {
-            value.clone()
-        } else {
-            if self.scope == 0 {
-                Value::NULL
+        if key.contains('#') {
+            // We can unwrap, because it is nil only if the delimiter is not present, but we can be sure, because we checked.
+            let path = key.split_once("#").unwrap();
+
+            let environment = self.get(path.0.to_string());
+
+            if let Value::ENVIRONMENT(target_environment) = environment {
+                target_environment.get(path.1.to_string())
+            } else if let Value::NULL = environment {
+                return Value::NULL;
             } else {
-                self.get_in_scope(key, self.scope - 1)
+                let target = path.0;
+                self.error(&format!("{target} is not an environment."));
+            }
+        } else {
+            if let Some(value) = self.values.get(&VariableId(self.scope, key.clone())) {
+                value.clone()
+            } else {
+                if self.scope == 0 {
+                    Value::NULL
+                } else {
+                    self.get_in_scope(key, self.scope - 1)
+                }
             }
         }
     }
 
     fn get_in_scope(&self, key: String, scope: Scope) -> Value {
-        if let Some(value) = self.values.get(&VariableId(scope, key.clone())) {
-            value.clone()
-        } else {
-            if scope == 0 {
-                Value::NULL
+        if key.contains('#') {
+            // We can unwrap, because it is nil only if the delimiter is not present, but we can be sure, because we checked.
+            let path = key.split_once("#").unwrap();
+
+            let environment = self.values.get(&VariableId(scope, key.clone()));
+
+            if let Some(value) = environment {
+                if let Value::ENVIRONMENT(target_environment) = value {
+                    target_environment.get(key)
+                } else if let Value::NULL = value {
+                    return Value::NULL;
+                } else {
+                    let target = path.0;
+                    self.error(&format!("{target} is not an environment."));
+                }
             } else {
-                self.get_in_scope(key, scope - 1)
+                Value::NULL
+            }
+        } else {
+            if let Some(value) = self.values.get(&VariableId(scope, key.clone())) {
+                value.clone()
+            } else {
+                if scope == 0 {
+                    Value::NULL
+                } else {
+                    self.get_in_scope(key, scope - 1)
+                }
             }
         }
     }
@@ -152,7 +188,7 @@ impl Environment {
                     Value::NULL
                 }
             }
-        }else if let Value::NATIVE_FUNCTION(function, arity) = self.get(name.clone().to_string()) {
+        } else if let Value::NATIVE_FUNCTION(function, arity) = self.get(name.clone().to_string()) {
             if arity != -1 && arguments.len() != arity as usize {
                 self.error(&format!("Function {} expects {} arguments, but {} were provided.", name, arity, arguments.len()));
             }
@@ -165,99 +201,122 @@ impl Environment {
     }
 
     pub fn call_function(&mut self, name: &String, arguments: Vec<Value>) -> Value {
-        match &name as &str {
-            "get" => self.call_get(arguments),
-            "&" | "list" => self.call_list(arguments),
-            "+" => self.call_addition(arguments),
-            "-" => self.call_subtraction(arguments),
-            "*" => self.call_multiplication(arguments),
-            "/" => self.call_division(arguments),
-            "!" => self.call_negate(arguments),
-            "&&" | "||" => self.call_logical(name, arguments),
-            "is" | "??" | "==" | "!=" | "<=" | ">=" | "<" | ">" | "%" => self.call_binary(name, arguments),
-            "print" => self.call_print(arguments),
-            "println" => self.call_println(arguments),
-            "eval" => self.call_eval(arguments),
-            "break" => self.call_break(arguments),
-            "error" => self.call_error(arguments),
-            "panic" => self.call_panic(arguments),
-            "read" => self.call_read(arguments),
-            "insert" => self.call_insert(arguments),
-            "round" => self.call_round(arguments),
-            "map" => self.call_map(arguments),
-            "remove" => self.call_remove(arguments),
-            "replace" => self.call_replace(arguments),
-            "length" => self.call_length(arguments),
-            "string" => self.call_string(arguments),
-            "number" => self.call_number(arguments),
-            "if" => self.call_if(arguments),
-            "while" => self.call_while(arguments),
-            "table" | "#" => self.call_table(arguments),
-            "repeat" => self.call_repeat(arguments),
-            "for" => self.call_for(arguments),
-            "run" => self.call_run(arguments),
-            "try" => self.call_try(arguments),
-            _ => {
-                if name.chars().nth(0).unwrap_or(' ') == '@' {
-                    // Process declaration
-                    if name == "@" {
-                        self.error("Name can't be empty (can't be only @).")
-                    }
+        if name.contains('#') {
+            // We can unwrap, because it is nil only if the delimiter is not present, but we can be sure, because we checked.
+            let path = name.split_once("#").unwrap();
 
-                    let mut name = name.clone();
-                    name.remove(0);
+            let environment = self.get(path.0.to_string());
 
-                    if 2 < arguments.len() {
-                        self.declare(name, Value::LIST(arguments.clone()));
-                        Value::LIST(arguments)
-                    } else if arguments.len() == 2 {
-                        if let Value::FUNCTION_ARGUMENTS(parameters) = arguments[0].clone() {
-                            if let Value::BLOCK(block) = arguments[1].clone() {
-                                self.declare(name, Value::FUNCTION(parameters.clone(), Box::new(Value::BLOCK(block.clone()))));
-                                Value::FUNCTION(parameters, Box::new(Value::BLOCK(block)))
-                            } else {
-                                self.error("Function definition's second argument must be a block.");
-                            }
-                        } else {
-                            self.error("Function definition's first argument must be function arguments.");
+            if let Value::ENVIRONMENT(target_environment) = environment {
+                let mut environment = target_environment.clone();
+
+                let result = environment.call_function(&path.1.to_string(), arguments);
+
+                self.assign(path.0.to_string(), Value::ENVIRONMENT(environment));
+
+                result
+            } else if let Value::NULL = environment {
+                return Value::NULL;
+            } else {
+                let target = path.0;
+                self.error(&format!("{target} is not an environment."));
+            }
+        } else {
+            match &name as &str {
+                "get" => self.call_get(arguments),
+                "import" => self.call_import(arguments),
+                "&" | "list" => self.call_list(arguments),
+                "+" => self.call_addition(arguments),
+                "-" => self.call_subtraction(arguments),
+                "*" => self.call_multiplication(arguments),
+                "/" => self.call_division(arguments),
+                "!" => self.call_negate(arguments),
+                "&&" | "||" => self.call_logical(name, arguments),
+                "is" | "??" | "==" | "!=" | "<=" | ">=" | "<" | ">" | "%" => self.call_binary(name, arguments),
+                "print" => self.call_print(arguments),
+                "println" => self.call_println(arguments),
+                "eval" => self.call_eval(arguments),
+                "break" => self.call_break(arguments),
+                "error" => self.call_error(arguments),
+                "panic" => self.call_panic(arguments),
+                "read" => self.call_read(arguments),
+                "insert" => self.call_insert(arguments),
+                "round" => self.call_round(arguments),
+                "map" => self.call_map(arguments),
+                "remove" => self.call_remove(arguments),
+                "replace" => self.call_replace(arguments),
+                "length" => self.call_length(arguments),
+                "string" => self.call_string(arguments),
+                "number" => self.call_number(arguments),
+                "if" => self.call_if(arguments),
+                "while" => self.call_while(arguments),
+                "table" | "#" => self.call_table(arguments),
+                "repeat" => self.call_repeat(arguments),
+                "for" => self.call_for(arguments),
+                "run" => self.call_run(arguments),
+                "try" => self.call_try(arguments),
+                _ => {
+                    if name.chars().nth(0).unwrap_or(' ') == '@' {
+                        // Process declaration
+                        if name == "@" {
+                            self.error("Name can't be empty (can't be only @).")
                         }
-                    } else if arguments.len() == 1 {
-                        self.declare(name, arguments[0].clone());
-                        arguments[0].clone()
-                    } else {
-                        self.error("Variable set operation must have 1 or more arguments.");
-                    }
-                } else if name.chars().nth(0).unwrap_or(' ') == '=' {
-                    // Process assignment
-                    if name == "=" {
-                        self.error("Name can't be empty (can't be only =).")
-                    }
 
-                    let mut name = name.clone();
-                    name.remove(0);
+                        let mut name = name.clone();
+                        name.remove(0);
 
-                    if 2 < arguments.len() {
-                        self.assign(name, Value::LIST(arguments.clone()));
-                        Value::LIST(arguments)
-                    } else if arguments.len() == 2 {
-                        if let Value::FUNCTION_ARGUMENTS(parameters) = arguments[0].clone() {
-                            if let Value::BLOCK(block) = arguments[1].clone() {
-                                self.assign(name, Value::FUNCTION(parameters.clone(), Box::new(Value::BLOCK(block.clone()))));
-                                Value::FUNCTION(parameters, Box::new(Value::BLOCK(block)))
+                        if 2 < arguments.len() {
+                            self.declare(name, Value::LIST(arguments.clone()));
+                            Value::LIST(arguments)
+                        } else if arguments.len() == 2 {
+                            if let Value::FUNCTION_ARGUMENTS(parameters) = arguments[0].clone() {
+                                if let Value::BLOCK(block) = arguments[1].clone() {
+                                    self.declare(name, Value::FUNCTION(parameters.clone(), Box::new(Value::BLOCK(block.clone()))));
+                                    Value::FUNCTION(parameters, Box::new(Value::BLOCK(block)))
+                                } else {
+                                    self.error("Function definition's second argument must be a block.");
+                                }
                             } else {
-                                self.error("Function definition's second argument must be a block.");
+                                self.error("Function definition's first argument must be function arguments.");
                             }
+                        } else if arguments.len() == 1 {
+                            self.declare(name, arguments[0].clone());
+                            arguments[0].clone()
                         } else {
-                            self.error("Function definition's first argument must be function arguments.");
+                            self.error("Variable set operation must have 1 or more arguments.");
                         }
-                    } else if arguments.len() == 1 {
-                        self.assign(name, arguments[0].clone());
-                        arguments[0].clone()
+                    } else if name.chars().nth(0).unwrap_or(' ') == '=' {
+                        // Process assignment
+                        if name == "=" {
+                            self.error("Name can't be empty (can't be only =).")
+                        }
+
+                        let mut name = name.clone();
+                        name.remove(0);
+
+                        if 2 < arguments.len() {
+                            self.assign(name, Value::LIST(arguments.clone()));
+                            Value::LIST(arguments)
+                        } else if arguments.len() == 2 {
+                            if let Value::FUNCTION_ARGUMENTS(parameters) = arguments[0].clone() {
+                                if let Value::BLOCK(block) = arguments[1].clone() {
+                                    self.assign(name, Value::FUNCTION(parameters.clone(), Box::new(Value::BLOCK(block.clone()))));
+                                    Value::FUNCTION(parameters, Box::new(Value::BLOCK(block)))
+                                } else {
+                                    self.error("Function definition's second argument must be a block.");
+                                }
+                            } else {
+                                self.error("Function definition's first argument must be function arguments.");
+                            }
+                        } else if arguments.len() == 1 {
+                            self.assign(name, arguments[0].clone());
+                            arguments[0].clone()
+                        } else {
+                            self.error("Variable set operation must have 1 or more arguments.");
+                        }
                     } else {
-                        self.error("Variable set operation must have 1 or more arguments.");
+                        self.call_user_defined_function(name, arguments)
                     }
-                } else {
-                    self.call_user_defined_function(name, arguments)
                 }
             }
         }
