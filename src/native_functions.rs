@@ -603,10 +603,36 @@ impl Environment {
         }
 
         if let Value::STRING(path) = arguments[0].clone() {
+            let mut origin_path = self.path.clone();
+
+            if origin_path.starts_with("./") {
+                origin_path.remove(0);
+                origin_path.remove(0);
+                origin_path = std::env::current_dir().unwrap().to_str().unwrap().to_string() + "/" + &origin_path;
+            }
+
+            if !origin_path.ends_with("/") {
+                let mut origin_path_split = origin_path.split("/").collect::<Vec<&str>>();
+                origin_path_split.remove(origin_path_split.len() - 1);
+                origin_path = origin_path_split.join("/");
+                origin_path += "/"
+            }
+
             let mut path = path;
 
-            path += ".hier";
-            path.insert_str(0, "./");
+            if !path.starts_with("/") {
+                path = origin_path.clone() + &path;
+            }
+
+            if path.starts_with("./") {
+                path.remove(0);
+                path.remove(0);
+                path = origin_path + &path;
+            }
+
+            if !path.ends_with(".hier") {
+                path += ".hier";
+            }
 
             let contents = (self.module_reader)(path.clone());
 
@@ -624,7 +650,7 @@ impl Environment {
                 (self.exit_handler)();
             }
 
-            let mut environment = Environment::new(false, self.module_reader, self.exit_handler);
+            let mut environment = Environment::new(false, path, self.module_reader, self.exit_handler);
 
             environment.code = parser.code;
             environment.interpret();
@@ -848,7 +874,7 @@ impl Environment {
         }
 
         if let Value::STRING(code) = arguments[0].clone() {
-            let mut hier = Hier::new(self.module_reader, self.exit_handler);
+            let mut hier = Hier::new(self.path.clone(), self.module_reader, self.exit_handler);
             hier.run(code)
         } else {
             self.error("Evaluate operation requires a string argument.");

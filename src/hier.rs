@@ -10,9 +10,9 @@ pub struct Hier {
 }
 
 impl Hier {
-    pub fn new(module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
+    pub fn new(path: String, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
         Self {
-            environment: Environment::new(false, module_reader, exit_handler),
+            environment: Environment::new(false, path, module_reader, exit_handler),
             module_reader,
             exit_handler
         }

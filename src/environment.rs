@@ -14,6 +14,7 @@ pub struct VariableId(pub Scope, pub String);
 #[derive(Clone)]
 pub struct Environment {
     pub scope: Scope,
+    pub path: String,
     pub values: HashMap<VariableId, Value>,
     pub code: Expression,
     is_in_repl: bool,
@@ -23,11 +24,12 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new(is_in_repl: bool, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
+    pub fn new(is_in_repl: bool, path: String, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
         Self {
             scope: 0,
             values: HashMap::new(),
             code: Expression::LIST(vec![], Location::empty()),
+            path,
             is_in_repl,
             module_reader,
             exit_handler,
@@ -50,6 +52,7 @@ impl Environment {
             scope: 0,
             values: HashMap::new(),
             code,
+            path: String::new(),
             is_in_repl,
             module_reader,
             exit_handler,

@@ -16,7 +16,7 @@ fn module_reader(path: String) -> String {
 
 #[test]
 fn map_function_works() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(), |_| { String::new() }, exit_handler);
 
     let value = hier.run("(map (1 2 3) { (+ element 1) })".to_string());
 
@@ -25,7 +25,7 @@ fn map_function_works() {
 
 #[test]
 fn pipe_operator_works() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(), |_| { String::new() }, exit_handler);
 
     let value = hier.run("(1 2 3) > (map { (+ element 1) }) > (get)".to_string());
 
@@ -35,7 +35,7 @@ fn pipe_operator_works() {
 #[test]
 // Test whether object.function syntax works properly.
 fn does_object_root_work() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(), |_| { String::new() }, exit_handler);
 
     let value = hier.run("((1 2 3).map { (+ element 1) })".to_string());
 
@@ -44,7 +44,7 @@ fn does_object_root_work() {
 
 #[test]
 fn does_import_work() {
-    let mut hier = Hier::new(module_reader, exit_handler);
+    let mut hier = Hier::new("./general_tests.rs".to_string(), module_reader, exit_handler);
 
     let value = hier.run("run { (@test (import \"tests/testing_module\")) (test#hello \"World\") (get test#pi) }".to_string());
 
@@ -53,7 +53,7 @@ fn does_import_work() {
 
 #[test]
 fn does_automatic_root_parenthesis_work() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(), |_| { String::new() }, exit_handler);
 
     let value = hier.run("get (+ 2 2)".to_string());
 

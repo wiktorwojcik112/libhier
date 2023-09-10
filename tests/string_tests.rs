@@ -11,7 +11,7 @@ fn exit_handler() -> ! {
 
 #[test]
 fn escape_sequences_are_resolved() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(),|_| { String::new() }, exit_handler);
 
     let value = hier.run("(get \"Test \\n\")".to_string());
 
@@ -20,7 +20,7 @@ fn escape_sequences_are_resolved() {
 
 #[test]
 fn interpolations_are_resolved() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(),|_| { String::new() }, exit_handler);
 
     let value = hier.run("(run (@test 5) (get \"Test \\(get test)\"))".to_string());
 
@@ -29,7 +29,7 @@ fn interpolations_are_resolved() {
 
 #[test]
 fn is_concatenating_properly() {
-    let mut hier = Hier::new(|_| { String::new() }, exit_handler);
+    let mut hier = Hier::new(String::new(),|_| { String::new() }, exit_handler);
 
     let value = hier.run("(+ \"Test\" \" concatenation\")".to_string());
 
