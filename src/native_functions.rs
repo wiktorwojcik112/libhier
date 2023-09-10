@@ -109,77 +109,139 @@ impl Environment {
         Value::NUMBER(result)
     }
 
-    pub fn call_binary(&mut self, operation: &String, arguments: Vec<Value>) -> Value {
-        // Make it support many arguments.
+    pub fn call_null_coalescing(&self, arguments: Vec<Value>) -> Value {
+        for argument in arguments {
+            if let Value::NULL = argument {
+                continue
+            } else {
+                return argument
+            }
+        }
+
+        Value::NULL
+    }
+
+    pub fn call_modulo(&self, arguments: Vec<Value>) -> Value {
+        if arguments.len() != 2 {
+            self.error("Modulo requires only 2 operands");
+        }
+
+        if let Value::NUMBER(number1) = arguments[0].clone() {
+            if let Value::NUMBER(number2) = arguments[1].clone() {
+                Value::NUMBER(((number1 as i64) % (number2 as i64)) as f64)
+            } else {
+                self.error("Modulo requires 2 number arguments.");
+            }
+        } else {
+            self.error("Modulo requires 2 number arguments.");
+        }
+    }
+
+    pub fn call_is(&self, arguments: Vec<Value>) -> Value {
+        if arguments.len() != 2 {
+            self.error("Is requires only 2 operands");
+        }
+
+        if let Value::TYPE(a_type) = arguments[1].clone() {
+            Value::BOOL(arguments[0].get_type() == a_type)
+        } else {
+            self.error("Is operation requires second argument to be a value type.")
+        }
+    }
+
+    pub fn call_comparison(&mut self, operation: &String, arguments: Vec<Value>) -> Value {
         if arguments.len() != 2 {
             self.error("Binary operations require only 2 operands");
         }
 
         match &operation as &str {
-            "%" => if let Value::NUMBER(number1) = arguments[0].clone() {
-                if let Value::NUMBER(number2) = arguments[1].clone() {
-                    Value::NUMBER(((number1 as i64) % (number2 as i64)) as f64)
-                } else {
-                    self.error("Modulo operation requires 2 number arguments.");
+            "==" => {
+                for (i, argument) in arguments.iter().enumerate() {
+                    if argument.clone() != arguments[i - 1] {
+                        return Value::BOOL(false)
+                    }
                 }
-            } else {
-                self.error("Modulo operation requires 2 number arguments.");
+
+                return Value::BOOL(true)
             },
-            "??" => if arguments[0] != Value::NULL { arguments[0].clone() } else { arguments[1].clone() },
-            "==" => Value::BOOL(arguments[0] == arguments[1]),
-            "is" => {
-                if let Value::TYPE(a_type) = arguments[1].clone() {
-                    Value::BOOL(arguments[0].get_type() == a_type)
-                } else {
-                    self.error("Is operation requires second argument to be value type.")
+            "!=" => {
+                for (i, argument) in arguments.iter().enumerate() {
+                    if argument.clone() == arguments[i - 1] {
+                        return Value::BOOL(false)
+                    }
                 }
+
+                return Value::BOOL(true)
             },
-            "!=" => Value::BOOL(arguments[0] != arguments[1]),
             "<" => {
-                if let Value::NUMBER(number0) = arguments[0] {
-                    if let Value::NUMBER(number1) = arguments[1] {
-                        Value::BOOL(number0 < number1)
+                for (i, argument) in arguments.iter().enumerate() {
+                    if let Value::NUMBER(number2) = argument {
+                        if let Value::NUMBER(number1) = arguments[i - 1] {
+                            if number1 >= number2.clone() {
+                                return Value::BOOL(false)
+                            }
+                        } else {
+                            self.error("< comparison operands must be numbers.")
+                        }
                     } else {
                         self.error("< comparison operands must be numbers.")
                     }
-                } else {
-                    self.error("< comparison operands must be numbers.")
                 }
+
+                return Value::BOOL(true)
             },
             ">" => {
-                if let Value::NUMBER(number0) = arguments[0] {
-                    if let Value::NUMBER(number1) = arguments[1] {
-                        Value::BOOL(number0 > number1)
+                for (i, argument) in arguments.iter().enumerate() {
+                    if let Value::NUMBER(number2) = argument {
+                        if let Value::NUMBER(number1) = arguments[i - 1] {
+                            if number1 <= number2.clone() {
+                                return Value::BOOL(false)
+                            }
+                        } else {
+                            self.error("> comparison operands must be numbers.")
+                        }
                     } else {
                         self.error("> comparison operands must be numbers.")
                     }
-                } else {
-                    self.error("> comparison operands must be numbers.")
                 }
+
+                return Value::BOOL(true)
             },
             "<=" => {
-                if let Value::NUMBER(number0) = arguments[0] {
-                    if let Value::NUMBER(number1) = arguments[1] {
-                        Value::BOOL(number0 <= number1)
+                for (i, argument) in arguments.iter().enumerate() {
+                    if let Value::NUMBER(number2) = argument {
+                        if let Value::NUMBER(number1) = arguments[i - 1] {
+                            if number1 > number2.clone() {
+                                return Value::BOOL(false)
+                            }
+                        } else {
+                            self.error("<= comparison operands must be numbers.")
+                        }
                     } else {
                         self.error("<= comparison operands must be numbers.")
                     }
-                } else {
-                    self.error("<= comparison operands must be numbers.")
                 }
+
+                return Value::BOOL(true)
             },
             ">=" => {
-                if let Value::NUMBER(number0) = arguments[0] {
-                    if let Value::NUMBER(number1) = arguments[1] {
-                        Value::BOOL(number0 >= number1)
+                for (i, argument) in arguments.iter().enumerate() {
+                    if let Value::NUMBER(number2) = argument {
+                        if let Value::NUMBER(number1) = arguments[i - 1] {
+                            if number1 < number2.clone() {
+                                return Value::BOOL(false)
+                            }
+                        } else {
+                            self.error(">= comparison operands must be numbers.")
+                        }
                     } else {
                         self.error(">= comparison operands must be numbers.")
                     }
-                } else {
-                    self.error(">= comparison operands must be numbers.")
                 }
-            },
-            _ => Value::NULL
+
+                return Value::BOOL(true)
+            }
+            _ => Value::NULL // We never reach this place, because call_function checks whether the operation is a valid one for this function.
         }
     }
 
@@ -548,9 +610,7 @@ impl Environment {
 
             let contents = (self.module_reader)(path.clone());
 
-            let mut tokenizer = Tokenizer::new(contents, self.module_reader, self.exit_handler);
-
-            tokenizer.module_name = path.clone();
+            let mut tokenizer = Tokenizer::new_with_name(contents, path.clone());
 
             if tokenizer.tokenize_module() {
                 eprintln!("Failed to import file {}.", path);

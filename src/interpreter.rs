@@ -9,7 +9,7 @@ pub fn warning(error: &str) {
 
 impl Environment {
     pub fn interpret(&mut self) -> Value {
-        if let Expression::BLOCK(block) = self.code.clone() {
+        if let Expression::BLOCK(block, _) = self.code.clone() {
             self.interpret_block(block)
         } else {
             self.visit(self.code.clone())
@@ -33,20 +33,24 @@ impl Environment {
     }
 
     pub fn visit(&mut self, value: Expression) -> Value {
+        self.current_interpreting_location = value.get_location().clone();
+
         match value {
-            Expression::STRING(_) => self.visit_string(value),
+            Expression::STRING(_, _) => self.visit_string(value),
             Expression::VALUE(_) => self.visit_value(value),
-            Expression::NUMBER(_) => self.visit_number(value),
-            Expression::IDENTIFIER(_) => self.visit_identifier(value),
-            Expression::LIST(_) => self.visit_list(value),
-            Expression::BLOCK(_) => self.visit_block(value),
-            Expression::KEY_VALUE(_, _) => self.visit_key_value(value),
-            Expression::PROPERTY(_, _) => self.visit_property(value)
+            Expression::NUMBER(_, _) => self.visit_number(value),
+            Expression::IDENTIFIER(_, _) => self.visit_identifier(value),
+            Expression::LIST(_, _) => self.visit_list(value),
+            Expression::BLOCK(_, _) => self.visit_block(value),
+            Expression::KEY_VALUE(_, _, _) => self.visit_key_value(value),
+            Expression::PROPERTY(_, _, _) => self.visit_property(value)
         }
     }
 
     pub fn visit_property(&mut self, property: Expression) -> Value {
-        if let Expression::PROPERTY(expression, identifier) = property {
+        self.current_interpreting_location = property.get_location().clone();
+
+        if let Expression::PROPERTY(expression, identifier, _) = property {
             let argument = self.visit(*(expression.clone()));
             self.call_function(&("get".to_string()), vec![argument, Value::STRING(identifier)])
         } else {
@@ -55,11 +59,13 @@ impl Environment {
     }
 
     pub fn visit_list(&mut self, list: Expression) -> Value {
-        if let Expression::LIST(list) = list {
+        self.current_interpreting_location = list.get_location().clone();
+
+        if let Expression::LIST(list, _) = list {
             if list.len() == 0 {
                 Value::NULL
             } else {
-                if let Expression::IDENTIFIER(name) = &list[0] {
+                if let Expression::IDENTIFIER(name, _) = &list[0] {
                     if name == "|" {
                         let mut expressions = list.clone();
                         expressions.remove(0);
@@ -67,7 +73,7 @@ impl Environment {
                         let mut arguments: Vec<String> = Vec::new();
 
                         for expression in expressions {
-                            if let Expression::IDENTIFIER(argument) = expression {
+                            if let Expression::IDENTIFIER(argument, _) = expression {
                                 arguments.push(argument);
                             } else {
                                 self.error("Function arguments must be identifiers.");
@@ -87,7 +93,7 @@ impl Environment {
 
                         self.call_function(&name, values)
                     }
-                } else if let Expression::PROPERTY(expression, identifier) = &list[0] {
+                } else if let Expression::PROPERTY(expression, identifier, _) = &list[0] {
                     let mut expressions = list.clone();
                     expressions.remove(0);
                     expressions.insert(0, (**expression).clone());
@@ -105,7 +111,7 @@ impl Environment {
                             self.error("Anonymous function's must have 2 arguments: function arguments and a block");
                         }
 
-                        if let Expression::BLOCK(block) = list[1].clone() {
+                        if let Expression::BLOCK(block, _) = list[1].clone() {
                             return Value::FUNCTION(arguments, Box::new(Value::BLOCK(block)));
                         } else {
                             self.error("Anonymous function's second argument must be a block.");
@@ -128,7 +134,9 @@ impl Environment {
     }
 
     pub fn visit_identifier(&mut self, value: Expression) -> Value {
-        if let Expression::IDENTIFIER(value) = value {
+        self.current_interpreting_location = value.get_location().clone();
+
+        if let Expression::IDENTIFIER(value, _) = value {
             match &value as &str {
                 "true" => Value::BOOL(true),
                 "false" => Value::BOOL(false),
@@ -155,7 +163,9 @@ impl Environment {
     }
 
     pub fn visit_key_value(&mut self, value: Expression) -> Value {
-        if let Expression::KEY_VALUE(identifier, expression) = value {
+        self.current_interpreting_location = value.get_location().clone();
+
+        if let Expression::KEY_VALUE(identifier, expression, _) = value {
             Value::KEY_VALUE(identifier, Box::new(self.visit(*expression)))
         } else {
             Value::NULL
@@ -163,7 +173,9 @@ impl Environment {
     }
 
     pub fn visit_string(&mut self, value: Expression) -> Value {
-        if let Expression::STRING(value) = value {
+        self.current_interpreting_location = value.get_location().clone();
+
+        if let Expression::STRING(value, _) = value {
             Value::STRING(value.resolve(self))
         } else {
             Value::NULL
@@ -171,7 +183,9 @@ impl Environment {
     }
 
     pub fn visit_number(&mut self, value: Expression) -> Value {
-        if let Expression::NUMBER(value) = value {
+        self.current_interpreting_location = value.get_location().clone();
+
+        if let Expression::NUMBER(value, _) = value {
             Value::NUMBER(value)
         } else {
             Value::NULL
@@ -179,7 +193,9 @@ impl Environment {
     }
 
     pub fn visit_block(&mut self, value: Expression) -> Value {
-        if let Expression::BLOCK(value) = value {
+        self.current_interpreting_location = value.get_location().clone();
+
+        if let Expression::BLOCK(value, _) = value {
             Value::BLOCK(value)
         } else {
             Value::NULL

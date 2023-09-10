@@ -26,7 +26,7 @@ impl Hier {
             code.push(')');
         }
 
-        let mut tokenizer = Tokenizer::new(code, self.module_reader, self.exit_handler);
+        let mut tokenizer = Tokenizer::new(code);
 
         if tokenizer.tokenize_module() {
             println!("Failed.");

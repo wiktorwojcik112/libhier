@@ -53,7 +53,7 @@ impl InterpolatedString {
                 self.parts.push(InterpolatedStringPart::RAW(raw_part));
                 raw_part = String::new();
 
-                let mut tokenizer = Tokenizer::new(self.raw[self.current_index..].to_string(), self.module_reader, self.exit_handler);
+                let mut tokenizer = Tokenizer::new(self.raw[self.current_index..].to_string());
 
                 let offset = tokenizer.tokenize_interpolation();
                 self.current_index += offset;

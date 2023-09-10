@@ -9,14 +9,11 @@ pub struct Tokenizer {
     current_offset: i64,
     pub tokens: Vec<Token>,
     had_error: bool,
-    modules: Vec<String>,
-    pub module_name: String,
-    module_reader: fn(String) -> String,
-    exit_handler: fn() -> !
+    pub module_name: String
 }
 
 impl Tokenizer {
-    pub fn new(code: String, module_reader: fn(String) -> String, exit_handler: fn() -> !) -> Self {
+    pub fn new(code: String) -> Self {
         Self {
             code,
             current_index: 0,
@@ -24,10 +21,19 @@ impl Tokenizer {
             current_offset: 0,
             tokens: vec![],
             had_error: false,
-            modules: vec![],
-            module_name: String::new(),
-            module_reader,
-            exit_handler
+            module_name: "main".to_string(),
+        }
+    }
+
+    pub fn new_with_name(code: String, module_name: String) -> Self {
+        Self {
+            code,
+            current_index: 0,
+            current_line: 1,
+            current_offset: 0,
+            tokens: vec![],
+            had_error: false,
+            module_name
         }
     }
 

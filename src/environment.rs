@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use crate::expression::Expression;
 use crate::interpreter::warning;
+use crate::location::Location;
+use crate::report;
 use crate::value::Value;
 
 
@@ -17,6 +19,7 @@ pub struct Environment {
     is_in_repl: bool,
     pub module_reader: fn(String) -> String,
     pub exit_handler: fn() -> !,
+    pub current_interpreting_location: Location
 }
 
 impl Environment {
@@ -24,15 +27,16 @@ impl Environment {
         Self {
             scope: 0,
             values: HashMap::new(),
-            code: Expression::LIST(vec![]),
+            code: Expression::LIST(vec![], Location::empty()),
             is_in_repl,
             module_reader,
             exit_handler,
+            current_interpreting_location: Location::empty()
         }
     }
 
     pub fn error(&self, error: &str) -> ! {
-        eprintln!("!: {}", error);
+        report(error, self.current_interpreting_location.clone());
 
         if self.is_in_repl {
             panic!("");
@@ -49,6 +53,7 @@ impl Environment {
             is_in_repl,
             module_reader,
             exit_handler,
+            current_interpreting_location: Location::empty()
         }
     }
     pub fn begin_scope(&mut self) {
@@ -232,7 +237,10 @@ impl Environment {
                 "/" => self.call_division(arguments),
                 "!" => self.call_negate(arguments),
                 "&&" | "||" => self.call_logical(name, arguments),
-                "is" | "??" | "==" | "!=" | "<=" | ">=" | "<" | ">" | "%" => self.call_binary(name, arguments),
+                "==" | "!=" | "<=" | ">=" | "<" | ">" => self.call_comparison(name, arguments),
+                "??" => self.call_null_coalescing(arguments),
+                "%" => self.call_modulo(arguments),
+                "is" => self.call_is(arguments),
                 "print" => self.call_print(arguments),
                 "println" => self.call_println(arguments),
                 "eval" => self.call_eval(arguments),

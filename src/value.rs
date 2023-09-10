@@ -51,7 +51,7 @@ impl Debug for Value {
             Value::KEY_VALUE(key, value) => write!(f, "Key value {{ key: {:?}, value: {:?} }}", key, value),
             Value::TABLE(table) => write!(f, "Table {{ table: {:?} }}", table),
             Value::ERROR(error) => write!(f, "Error {{ error: {:?} }}", error),
-            Value::ENVIRONMENT(_) => write!(f, "Environment")
+            Value::ENVIRONMENT(_) => write!(f, "Environment"),
         }
     }
 }
