@@ -623,7 +623,7 @@ impl Environment {
             if path.starts_with("./") {
                 path.remove(0);
                 path.remove(0);
-                path = origin_path + &path;
+                path = origin_path.clone() + &path;
             }
 
             if !path.starts_with("/") {
