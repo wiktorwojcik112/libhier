@@ -32,9 +32,9 @@ In Hier you can import files using import function which accepts a string with a
 
 ./main.hier
 ```
-(@mylibrary (import "library")
+(@mylibrary (import "library"))
 (library#hello "World")
-(@constants (import "math/constants")
+(@constants (import "math/constants"))
 (print "Pi is equal " constants#pi)
 (print "Golden ratio is equal " constants#golden_ratio)
 ```
