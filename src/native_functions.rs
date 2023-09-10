@@ -620,14 +620,14 @@ impl Environment {
 
             let mut path = path;
 
-            if !path.starts_with("/") {
-                path = origin_path.clone() + &path;
-            }
-
             if path.starts_with("./") {
                 path.remove(0);
                 path.remove(0);
                 path = origin_path + &path;
+            }
+
+            if !path.starts_with("/") {
+                path = origin_path.clone() + &path;
             }
 
             if !path.ends_with(".hier") {
